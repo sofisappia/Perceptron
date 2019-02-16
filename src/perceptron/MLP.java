@@ -11,6 +11,7 @@ public class MLP extends PApplet{
 	  private int hiddenLayerUnits;
 	  private int hiddenLayers;
 	  private int outputLayerUnits;
+	  private float loss;
 	  
 	  // learning parameters
 	  float learningRate;
@@ -43,10 +44,21 @@ public class MLP extends PApplet{
 	   void train(float[][] X, float[][] y){
 	     ArrayList<float[][]> activations = new ArrayList<float[][]>(); //array con los outputs de cada capa
 	     ArrayList<float[][]> dW; // para la corrección de pesos
-	     for(int i =0; i<epochs; i++){
-	       activations = this.forward(X);
-	       dW = this.backPropagation(activations, X, y);
-	       this.updateWeights(dW);
+	     try {
+		     int i = 0;
+		     while (i<epochs){
+		       activations = this.forward(X);
+		       dW = this.backPropagation(activations, X, y);
+		       this.updateWeights(dW);
+		       println("Loss: ", loss);
+		       if(this.loss <= 0.01){
+		         break;
+		       }
+		       i++;         
+		       }
+		       println("trained in ", i, " epochs with a loss of ", this.loss);
+	     }catch (IllegalArgumentException e) {
+	    	 println("Input nodes must match with number of features.\nOuput nodes must match with number of clasess.");
 	     }
 	   }
 	   
@@ -64,15 +76,38 @@ public class MLP extends PApplet{
 	      }
 	      W = layers.get(i).getWeights();
 	      hi = Mat.multiply(hi, Mat.transpose(W));
-	      Vi = Operations.sigmoid(hi, false);
 	      if(i != layers.size()-1){
-	        Vi = Operations.extend(Vi, 1, true);
-	       }
+	          Vi = Operations.sigmoid(hi, false);
+	          Vi = Operations.extend(Vi, 1, true);
+	        }else{
+	           Vi = softmax(hi);
+	         }
 	       activationOutputs.add(Vi);       
 	     }
 	     return activationOutputs; 
 	   }
 	   
+	   void cross_entropy_loss(float[][] S, float[][] y){
+		    int n = y.length; // number of examples
+		/*    Mat.print(S,  3);
+		    println();
+		    Mat.print(y, 0);
+		    println();*/
+		    float[][] L = Operations.dotProduct(S, y, true);
+		    float tempLoss = 0;
+		   // Mat.print(L, 3);
+		  //  println();
+		   // delay(1000);
+		    for(int i=0; i<n; i++){
+		 //   	println("li0: ", -1*log(L[i][0]));
+		      tempLoss += -1 * log(L[i][0]);
+
+		    }
+		//      println(tempLoss/n);
+		  //    delay(3000);
+		      this.loss = tempLoss/ n;
+		   
+		  }	   
 	   
 	   ArrayList<float[][]> backPropagation(ArrayList<float[][]> activations, float[][] X, float[][] y){
 	     ArrayList<float[][]> deltas = new ArrayList<float[][]>();
@@ -90,9 +125,12 @@ public class MLP extends PApplet{
 	     // output layer
 	     ai = activations.get(activations.size()-1); // output layer
 	     aj = activations.get(activations.size()-2); // last hidden layer
+	    
+	     //update loss
+	     cross_entropy_loss(ai, y);
 	     
 	     di = Operations.subtract(y, ai); 
-	     di = Mat.dotMultiply(di, Operations.sigmoid(ai,true));// delta of the output layer
+	     //di = Mat.dotMultiply(di, Operations.sigmoid(ai,true));// delta of the output layer
 	     deltas.add(di);
 	    
 	     dWij = Operations.scalarMultiply(learningRate, di);     
@@ -131,5 +169,23 @@ public class MLP extends PApplet{
 	     outputs = this.forward(X);
 	     return outputs.get(outputs.size()-1); 
 	   }
+	   
+	   float[][] softmax(float[][] A){
+		   int n_ex = A.length; // number of examples
+		   int n_classes = A[0].length; // number of classes
+		   float[][] probs = new float[n_ex][n_classes]; 
+		   // variables auxiliares
+		   float[] tempProb = new float[n_classes];
+		   float probSum = 0;
+		   for(int i=0; i<n_ex; i++){
+		     float max = max(A[i]); // para que el rango de entradas sea cercano a cero (evitar division por cero)  
+		     for(int j=0; j<n_classes; j++){
+		       tempProb[j] = exp(A[i][j] - max);
+		     }
+		     probSum = Mat.sum(tempProb);
+		     probs[i] = Operations.scalarMultiply(1/probSum, tempProb);
+		   }
+		   return probs;
+		 }	   
 	}
 

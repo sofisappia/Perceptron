@@ -114,7 +114,15 @@ public class Operations {
 		}
 		return B;
 	}
-
+	
+	public static float[] scalarMultiply(float a, float[] A){
+		  int lenA = A.length;
+		  float[] B = new float[lenA];
+		  for(int i=0; i<lenA; i++){
+		      B[i] = a * A[i];
+		  }
+		  return B;
+		}
 	public static float[][] extend(float[][] A, float a, boolean columns){
 		int rowsA = A.length;
 		int colsA = A[0].length;
